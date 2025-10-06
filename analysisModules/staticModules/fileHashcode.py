@@ -2,6 +2,7 @@ import hashlib
 import requests
 
 
+
 def getHash(filePath, type):
     # docString
     """
