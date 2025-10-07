@@ -1,7 +1,7 @@
 import hashlib
 import requests
 
-
+# --------- Get file hash data -------------- #
 
 def getHash(filePath, type):
     # docString
@@ -23,6 +23,11 @@ def getHash(filePath, type):
     
     print 
     return hashFunction.hexdigest()
+
+
+# --------- rabit hole -------------- #
+
+# features that are not fully implemented #
 
 # testing hash checking via virustotal database - hardcoded api for dev.
 def queryHashDatabase(fileHash):
