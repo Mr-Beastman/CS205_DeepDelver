@@ -93,7 +93,7 @@ class FileMetadata:
     def getFileSections(self) -> dict:
         #docString
         """
-        Return the file sections in a dict
+        Extract file sections with metadata
 
         Returns:
             dict: file sections with related information

@@ -6,7 +6,6 @@ import threading
 import psutil
 
 class ProcessMonitor:
-
     def __init__(self, checkInterval: float = 0.2):
         self.checkInterval = checkInterval
 
@@ -17,17 +16,41 @@ class ProcessMonitor:
         """
 
         #start logging notifiactions
-        logging.info(f"{self.name} Started")
+        logging.info("ProcessMonitor Started")
 
         results = {"processes":[]}
-        counter = 0
+        observedPids = set()
 
-        while not stopEvent.is_set() and i < 50:
-            results["processes"].append(f"simproc_{counter}.exe")
-            i += 1
-            time.sleep(self.checkInterval)
+        try:
+            while not stopEvent.is_set():
+                for proc in psutil.process_iter(attrs=["pid", "name"]):
+                    pId = proc.info["pid"]
+                    name = proc.info["name"]
+                    if pId not in observedPids:
+                        results["processes"].append({"pid": pId, "name": name})
+                        observedPids.add(pId)
+                        logging.debug(f"New process detected: {name} (PID {pId})")
+                time.sleep(self.checkInterval)
+        except KeyboardInterrupt:
+            print("Monitor ended by user via KeyBoardInterrupt")
 
-        outFile = outputPath/f"{self.name}.json"
-        outFile.write_text(json.dumps(results))
+        outFile = outputPath/"report.json"
+        outFile.write_text(json.dumps(results, indent=2))
 
-        logging.info(f"{self.name} logs saved to {outFile}")
+        logging.info(f"ProcessMonitor logs saved to {outFile}")
+
+
+###  Test Function ###
+def testRun(outPath: str) -> None:
+    #docString
+    """
+    Used to test monitor during development.
+    
+    Parameters:
+        str : location for output file to be saved.
+    """
+
+    path = Path(outPath)
+    pm = ProcessMonitor()
+    stopEvent = threading.Event()
+    pm.runProcessMonitor(stopEvent, path)
