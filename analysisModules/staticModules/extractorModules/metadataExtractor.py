@@ -58,16 +58,19 @@ class FileMetadata:
         Returns:
             list: list with "Created", "Modified" and "Accesssed"
         """
+        pe = pefile.PE(self.filePath)
         stats = os.stat(self.filePath)
 
-        ctime = datetime.fromtimestamp(stats.st_birthtime)
-        mtime = datetime.fromtimestamp(stats.st_mtime)
-        atime = datetime.fromtimestamp(stats.st_atime)
+        compileTime = datetime.fromtimestamp(pe.FILE_HEADER.TimeDateStamp)
+        createdTime = datetime.fromtimestamp(stats.st_birthtime)
+        modifiedTime = datetime.fromtimestamp(stats.st_mtime)
+        accessedTime = datetime.fromtimestamp(stats.st_atime)
 
         return [
-            "Created: " + ctime.strftime("%d-%m-%Y %H:%M:%S"),
-            "Modified: " + mtime.strftime("%d-%m-%Y %H:%M:%S"),
-            "Accessed: " + atime.strftime("%d-%m-%Y %H:%M:%S")
+            "Compiled:" + compileTime.strftime("%d-%m-%Y %H:%M:%S"),
+            "Created: " + createdTime.strftime("%d-%m-%Y %H:%M:%S"),
+            "Modified: " + modifiedTime.strftime("%d-%m-%Y %H:%M:%S"),
+            "Accessed: " + accessedTime.strftime("%d-%m-%Y %H:%M:%S")
         ]
 
     def getFileArchitecture(self) -> str:
@@ -86,6 +89,35 @@ class FileMetadata:
         
         except Exception as error:
             return None, str(error)
+        
+    def getFileSections(self) -> dict:
+        #docString
+        """
+        Return the file sections in a dict
+
+        Returns:
+            dict: file sections with related information
+        """
+        fileSections = {}
+
+        try:
+            file = pefile.PE(self.filePath)
+
+            for section in file.sections:
+                        name = section.Name.decode(errors='ignore').rstrip('\x00')
+
+                        fileSections[name] = {
+                            "VirtualAddress": section.VirtualAddress,
+                            "VirtualSize": section.Misc_VirtualSize,
+                            "SizeOfRawData": section.SizeOfRawData,
+                            "PointerToRawData": section.PointerToRawData,
+                            "Characteristics": section.Characteristics
+                        }
+
+            return fileSections
+
+        except Exception as error:
+            return None, str(error) 
 
     def getFileSectionsCount(self) -> int:
         #docString
