@@ -15,12 +15,9 @@ class StaticController:
         self.filePath = filePath
         self.metadataResults = {}
         self.hashResults = {}
-        self.stringUrlResults = []
-        self.stringIPResults = []
-        self.stringFilePaths = []
-        self.importResults = []
-        self.shannonEntropyResults = float()
-        self.partEntropyResults = []
+        self.stringExtractions = {}
+        self.stringResults = {}
+        self.entropyExtractions = {}
         
 
     def runStaticAnalysis(self)->None:
@@ -37,16 +34,13 @@ class StaticController:
 
         print("\n= Starting String Extraction =")
         stringExt = StringExtractor(self.filePath)
-        stringExt.loadFile()
-        stringExt.extractStrings()
-        stringUrls = stringExt.extractUrls()
-        self.stringIPResults = stringExt.extractIPs()
-        self.stringFilePaths = stringExt.extractFilePaths()
+
+        self.stringExtractions = stringExt.extractAll()
 
         print("\n= Starting String Analyser =")
-        stringAna = StringAnalyser(stringUrls)
+        stringAna = StringAnalyser(self.stringExtractions["urls"])
         stringAna.loadUrlsCsv()
-        self.stringUrlResults = stringAna.analyseUrls()
+        self.stringResults['urls'] = stringAna.analyseUrls()
 
         print("\n= Starting Import Extraction =")
         importObj = ImportExtractor(self.filePath)
@@ -54,8 +48,7 @@ class StaticController:
 
         print("\n= Starting Entophy Extraction =")
         entropyObj = EntropyExtractor(self.filePath)
-        self.shannonEntropyResults = entropyObj.getShannonEntrophy()
-        self.partEntropyResults = entropyObj.getPartEntrophy()
+        self.entropyExtractions = entropyObj.getEntropy()
 
         print("\n=== Static Analysis Complete ===")
 

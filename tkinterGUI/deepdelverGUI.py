@@ -65,7 +65,7 @@ class DeepDelverApp:
             self.loaderRunning = False
 
             self.parseOutput(output)
-            self.updateStatus(">", f"✅ Analysis complete: {os.path.basename(filepath)}")
+            self.updateStatus(">", f"Analysis complete: {os.path.basename(filepath)}")
 
     # clean up stdout txt and displaying correctly
     def parseOutput(self, text):

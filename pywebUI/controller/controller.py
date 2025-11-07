@@ -7,7 +7,7 @@ class GUIController:
         self.staticObj = None
         self.window = None
 
-    def set_window(self, window):
+    def setWindow(self, window):
         self.window = window    
 
     def startAnalysis(self, fileBytes, filename):
@@ -27,7 +27,6 @@ class GUIController:
                 tempPath = tempFile.name
                 tempFile.write(fileBytes)
 
-            # Optional: notify JS that analysis started
             if self.window:
                 self.window.evaluate_js("updateStatus('Static analysis started...')")
 

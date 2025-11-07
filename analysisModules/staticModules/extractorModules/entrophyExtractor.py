@@ -42,3 +42,10 @@ class EntropyExtractor:
             partEntropy[byte] = -part *math.log(part, 2)
 
         return partEntropy
+    
+    def getEntropy(self) -> dict:
+
+        return {
+            'shannon':self.getShannonEntrophy(),
+            'part':self.getPartEntrophy()
+        }

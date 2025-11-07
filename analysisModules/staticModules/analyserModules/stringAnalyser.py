@@ -1,9 +1,3 @@
-import re
-
-from urllib.parse import urlparse
-
-from analysisModules.staticModules.config.urlConfig.domainLists import trustedDomains
-
 class StringAnalyser():
 
     def __init__(self, urls:list):
@@ -12,6 +6,7 @@ class StringAnalyser():
         self.analysisResults = {}
         self.malwareCSV = "analysisModules/staticModules/config/urlConfig/unarmedUrls.csv"
 
+# ---- Url related ----
 
     def armUrl(self,unarmed: str) -> str:
         #docString
@@ -45,23 +40,16 @@ class StringAnalyser():
     def isMalicious(self, url) -> bool:
         #docString
         """
-        quick check if url submited exists within known malware list
+        brute force check if url submited exists within known malware list
+
+        Parameter: 
+            str: Url to be compared
+        Return:
+            Bool: True url is on comparison list, False it is not
         """
         
         for malware in self.knownMalware:
             if malware in url:
-                return True
-        
-        return False
-    
-    def isTrusted(self, url) -> bool:
-        #docString
-        """
-        quick check if url submitted contains trusted domains
-        """
-
-        for trusted in trustedDomains:
-            if trusted in url:
                 return True
         
         return False
@@ -82,8 +70,6 @@ class StringAnalyser():
             
             if self.isMalicious(url):
                 classification = "Malicious"
-            if self.isTrusted(url):
-                classification = "Trusted"
             else:
                 classification = "unknown"
 
