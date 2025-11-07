@@ -3,7 +3,7 @@ import requests
 
 # --------- Get file hash data -------------- #
 
-class HashId:
+class HashIdExtractor:
 
     def __init__(self, filePath:str):
         self.filePath = filePath
@@ -19,11 +19,15 @@ class HashId:
         Returns:
             dict: The hexadecimal digest of the file hash.
         """
+        
         hashId = {}
 
+        print("> Checking Hash Overrides")
         if hashType is None:
             hashType = self.hashType
 
+
+        print("> Attempting to Extract Hash Ids")
         for hash in hashType:
             try:
                 hasher = hashlib.new(hash)
@@ -33,5 +37,7 @@ class HashId:
                 hashId[hash] = hasher.hexdigest()
             except ValueError:
                 hashId[hash] = "Unsupported hash type"
+
+        print("> Hash Ids Extracted")
 
         return hashId

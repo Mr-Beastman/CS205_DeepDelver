@@ -1,7 +1,7 @@
 import math
 from collections import Counter
 
-class Entropy:
+class EntropyExtractor:
 
     def __init__(self, filePath:str):
         self.filePath = filePath
@@ -16,20 +16,23 @@ class Entropy:
         """
         ph
         """
+        print("> Getting Shannon Entrophy")
 
-        shannomEntropy = 0.0
+        shannonEntropy = 0.0
 
         for count in self.counts.values():
             x = count / len(self.data)
-            shannomEntropy -= x * math.log(x,2)
+            shannonEntropy -= x * math.log(x,2)
 
-        return shannomEntropy
+        return shannonEntropy
     
     def getPartEntrophy(self) -> dict:
         #docString
         """
         ph
         """
+        
+        print("> Getting Part Entrophy")
 
         partEntropy = {}
         dataLength = len(self.data)

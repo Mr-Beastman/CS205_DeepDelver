@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DeepDelver Dynamic Monitor</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <h1>DeepDelver</h1>
+
+    <div class="pageLayout">
+        <div class="containers">
+            <input type="file" id="fileInput">
+
+            <div class="buttons">
+                <button onclick="start()">Start Monitoring</button>
+                <button onclick="stop()">Stop Monitoring</button>
+            </div>
+
+            <p id="status"></p>
+        </div>
+
+        <div class="containers">
+            <h2>Reports</h2>
+        </div>
+    </div>
+
+    <script>
+    let intervalId;
+
+    function startLoader() {
+        const status = document.getElementById('status');
+        let dots = "";
+        intervalId = setInterval(() => {
+            dots = dots.length < 5 ? dots + "." : "";
+            status.innerText = "Running static analysis" + dots;
+        }, 300);
+    }
+
+    function stopLoader(finalMessage) {
+        clearInterval(intervalId);
+        document.getElementById('status').innerText = finalMessage;
+    }
+
+    async function start() {
+        const fileElement = document.getElementById('fileInput');
+        const file = fileElement.files[0];
+
+        if (!file) {
+            document.getElementById('status').innerText = "Please select a file.";
+            return;
+        }
+
+        startLoader();
+
+        // Use Uint8Array directly for large files
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+
+        const result = await window.pywebview.api.startAnalysis(bytes, file.name);
+
+        stopLoader(result);
+    }
+
+    async function stop() {
+        const result = await window.pywebview.api.stopAnalysis();
+        document.getElementById('status').innerText = result;
+    }
+
+    // Optional: function for Python to push messages
+    function updateStatus(message) {
+        document.getElementById('status').innerText = message;
+    }
+    </script>
+</body>
+</html>

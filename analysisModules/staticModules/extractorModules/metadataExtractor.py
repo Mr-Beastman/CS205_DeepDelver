@@ -5,7 +5,7 @@ from datetime import datetime
 
 # --------- Get standard File data -------------- #
 
-class FileMetadata:
+class MetadataExtractor:
 
     def __init__(self, filePath:str):
         self.filePath = filePath
@@ -18,6 +18,9 @@ class FileMetadata:
         Returns:
             str: file size with MB or GB suffixhelo
         """
+
+        print("> Getting File Name")
+
         return os.path.basename(self.filePath)
 
     def getFileExtention(self) -> str:
@@ -29,6 +32,7 @@ class FileMetadata:
         Returns:
             str: files extention type
         """
+        print("> Getting File Extention")
 
         return magic.from_file(self.filePath, mime=True)
 
@@ -41,6 +45,9 @@ class FileMetadata:
         Returns:
             str: file size with MB or GB suffixhelo
         """
+
+        print("> Getting File Size")
+
         sizeBytes = os.path.getsize(self.filePath)
         sizeGB = sizeBytes / 1_000_000_000
         
@@ -58,6 +65,9 @@ class FileMetadata:
         Returns:
             list: list with "Created", "Modified" and "Accesssed"
         """
+
+        print("> Getting File Time Stamps")
+
         pe = pefile.PE(self.filePath)
         stats = os.stat(self.filePath)
 
@@ -81,7 +91,9 @@ class FileMetadata:
         Returns:
             str: hexadecimal representing the machine type 
         """
-        
+
+        print("> Getting File Architecture")
+
         try:
             file = pefile.PE(self.filePath)
 
@@ -98,6 +110,9 @@ class FileMetadata:
         Returns:
             dict: file sections with related information
         """
+
+        print("> Getting File Sections")
+
         fileSections = {}
 
         try:
@@ -127,6 +142,7 @@ class FileMetadata:
         Returns:
             int: Number of sections in the file.
         """
+        print("> Getting File Section Count")
 
         try:
             file = pefile.PE(self.filePath)
@@ -145,6 +161,8 @@ class FileMetadata:
             str: hexadecimal string of the file's entry point address.      
         """
         
+        print("> Getting File Entry Point")
+
         try:
             file = pefile.PE(self.filePath)
 
@@ -161,12 +179,15 @@ class FileMetadata:
         Returns:
             dict: dictionary containing file metadata
         """
-
+        print("> Extracting all Metadata")
+        
         return {
             "fileName": self.getFileName(),
             "fileType": self.getFileExtention(),
             "fileSize": self.getFileSize(),
+            "fileArchitecture": self.getFileArchitecture(),
             "fileTimeStamps": self.getFileTimestamps(),
+            "fileSections": self.getFileSections(),
             "fileSectionCount": self.getFileSectionsCount(),
             "fileEntryPoint": self.getFileEntryPoint()
         }

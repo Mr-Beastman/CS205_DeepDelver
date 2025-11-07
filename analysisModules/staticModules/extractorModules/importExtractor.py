@@ -4,7 +4,6 @@ class ImportExtractor:
     
     def __init__(self, filePath:str):
         self.filePath = filePath  
-        self.imports = {}
         self.suspiciousAPI = [
             "VirtualAllocEx", 
             "WriteProcessMemory", 
@@ -23,7 +22,8 @@ class ImportExtractor:
         """
         
         """
-        # in function varibale for testing
+        print("> Checking for Suspicious APIs")
+        
         imports = {}
 
         try:
@@ -42,7 +42,7 @@ class ImportExtractor:
             else:
                 imports["None"] = ["No imports found"]
 
-        except Exception as e:
-            imports["Error"] = [str(e)]
+        except Exception as error:
+            imports["Error"] = [str(error)]
 
         return imports
