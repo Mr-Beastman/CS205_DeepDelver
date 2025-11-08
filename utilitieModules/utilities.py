@@ -21,7 +21,7 @@ def functionTimer(function):
 
 def loadCsv(filePath: str) -> list:
     """
-    Load a csv or plain text file.
+    Load a csv or plain text file and ignore # comments
 
     Parameters:
         filePath (str): file path to known urls
@@ -30,17 +30,15 @@ def loadCsv(filePath: str) -> list:
         urls in list form
     """
     
-    urls = []
+    fileContents = []
 
     path = Path(filePath)
-    if not path.exists():
-        print(f"[!] File not found: {filePath}")
-        return urls
 
     with path.open("r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if line:
-                urls.append(line)
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    fileContents.append(line)
 
-    return urls
+    return fileContents

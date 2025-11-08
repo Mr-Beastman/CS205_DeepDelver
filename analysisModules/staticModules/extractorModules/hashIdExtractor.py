@@ -34,7 +34,10 @@ class HashIdExtractor:
                 with open(self.filePath, "rb") as file:
                     while chunk := file.read(8192):
                         hasher.update(chunk)
-                hashId[hash] = hasher.hexdigest()
+                hashId[hash] = {
+                    "code":hasher.hexdigest(),
+                    "flag":"Not Checked"
+                }
             except ValueError:
                 hashId[hash] = "Unsupported hash type"
 
