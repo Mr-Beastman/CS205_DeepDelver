@@ -3,7 +3,7 @@
 from analysisModules.staticModules.extractorModules.metadataExtractor import MetadataExtractor
 from analysisModules.staticModules.extractorModules.hashIdExtractor import HashIdExtractor
 from analysisModules.staticModules.extractorModules.stringExtractor import StringExtractor
-from analysisModules.staticModules.extractorModules.importExtractor import ImportExtractor
+# from analysisModules.staticModules.extractorModules.importExtractor import ImportExtractor
 from analysisModules.staticModules.extractorModules.entrophyExtractor import EntropyExtractor
 
 #importing analyser modules
@@ -42,13 +42,25 @@ class StaticController:
         stringAna.loadUrlsCsv()
         self.stringResults['urls'] = stringAna.analyseUrls()
 
-        print("\n= Starting Import Extraction =")
-        importObj = ImportExtractor(self.filePath)
-        self.importResults = importObj.getImports()
+        # print("\n= Starting Import Extraction =")
+        # importObj = ImportExtractor(self.filePath)
+        # self.importResults = importObj.getImports()
 
         print("\n= Starting Entophy Extraction =")
         entropyObj = EntropyExtractor(self.filePath)
         self.entropyExtractions = entropyObj.getEntropy()
 
         print("\n=== Static Analysis Complete ===")
+
+    def combineResults(self) -> dict:
+        """
+        Return a single dictionary containing all static analysis results
+        """
+        return {
+            "Metadata": self.metadataResults,
+            "Hashes": self.hashResults,
+            "Strings (Analysed)": self.stringResults,
+            # "Imports": self.importResults,
+            "Entropy": self.entropyExtractions
+        }
 
