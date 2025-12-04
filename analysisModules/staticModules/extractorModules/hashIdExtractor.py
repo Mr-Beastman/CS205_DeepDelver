@@ -1,16 +1,12 @@
 import hashlib
-import requests
 
-# --------- Get file hash data -------------- #
-
-class HashId:
+class HashIdExtractor:
 
     def __init__(self, filePath:str):
         self.filePath = filePath
         self.hashType = ["Md5","Sha1","sha256"]
         
     def getHashId(self, hashType:list = None) -> dict:
-        # docString
         """
         Calculate the hash of a file using the specified types.
 
@@ -19,19 +15,27 @@ class HashId:
         Returns:
             dict: The hexadecimal digest of the file hash.
         """
+        
         hashId = {}
 
+        print("> Checking Hash Overrides")
         if hashType is None:
             hashType = self.hashType
 
+
+        print("> Attempting to Extract Hash Ids")
         for hash in hashType:
             try:
                 hasher = hashlib.new(hash)
                 with open(self.filePath, "rb") as file:
                     while chunk := file.read(8192):
                         hasher.update(chunk)
-                hashId[hash] = hasher.hexdigest()
+                hashId[hash] = {
+                    "code":hasher.hexdigest()
+                }
             except ValueError:
                 hashId[hash] = "Unsupported hash type"
+
+        print("> Hash Ids Extracted")
 
         return hashId
