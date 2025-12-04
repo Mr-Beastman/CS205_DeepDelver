@@ -1,7 +1,7 @@
 import pefile
 
 
-def getImports(filePath:str) -> dict:
+def ImportExtractor(filePath:str) -> dict:
     #docString
     """
     Extracts imported DLLs and their functions from pe file

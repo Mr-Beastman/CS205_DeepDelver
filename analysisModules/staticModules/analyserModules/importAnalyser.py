@@ -1,119 +1,81 @@
+import re
+from analysisModules.staticModules.config.importConfig.importApis import apiCategories, notableApis
 
-class ImportAnalyzer:
-    """
-    Analyzes extracted PE imports:
-    - Categorizes APIs (registry, network, process, etc.)
-    - Flags suspicious ones
-    - Provides category summary and suspicious indicators
-    """
-
-    API_CATEGORIES = {
-        "process_memory": [
-            "VirtualAllocEx", "VirtualAlloc", "WriteProcessMemory", "ReadProcessMemory",
-            "CreateRemoteThread", "CreateThread", "VirtualProtect", "OpenProcess",
-            "GetProcAddress", "LoadLibrary", "LoadLibraryEx"
-        ],
-
-        # Execution-related / launching processes
-        "execution": [
-            "ShellExecute", "ShellExecuteEx", "CreateProcess", "CreateProcessW", "WinExec",
-            "system", "ExitProcess"
-        ],
-
-        # Registry operations
-        "registry": [
-            "RegCreateKey", "RegCreateKeyEx", "RegOpenKey", "RegOpenKeyEx",
-            "RegSetValue", "RegSetValueEx", "RegDeleteKey", "RegDeleteValue",
-            "RegQueryValue", "RegQueryValueEx", "RegEnumKey", "RegEnumValue"
-        ],
-
-        # Privilege escalation
-        "privilege": [
-            "OpenProcessToken", "AdjustTokenPrivileges", "LookupPrivilegeValue",
-            "GetTokenInformation"
-        ],
-
-        # Network / HTTP / sockets
-        "network": [
-            "URLDownloadToFile", "InternetConnect", "HttpSendRequest",
-            "WSASocket", "connect", "send", "recv"
-        ],
-
-        # Clipboard / key logging / input
-        "clipboard_input": [
-            "GetAsyncKeyState", "GetKeyState", "SetWindowsHookEx", "OpenClipboard",
-            "SetClipboardData", "CloseClipboard", "EmptyClipboard"
-        ],
-
-        # GUI / mention category (common UI)
-        "mention": [
-            # KERNEL32.dll
-            "CreateFile", "ReadFile", "WriteFile", "CloseHandle", "SetFilePointer",
-            "GetFileSize", "CopyFile", "MoveFile", "DeleteFile", "CreateDirectory",
-            "RemoveDirectory", "GetModuleHandle", "GetModuleFileName", "LoadLibrary",
-            # USER32.dll
-            "CreateWindowEx", "DispatchMessage", "DrawText", "MessageBox",
-            "GetDlgItem", "SetWindowText", "SendMessage", "BeginPaint", "EndPaint",
-            "DefWindowProc", "InvalidateRect", "EnableWindow", "GetDC", "ReleaseDC",
-            # GDI32.dll
-            "SelectObject", "SetBkMode", "SetBkColor", "SetTextColor", "DeleteObject",
-            "CreateFontIndirect", "CreateBrushIndirect", "GetDeviceCaps"
-        ],
-
-        # Anti-analysis / debugger checks
-        "be_aware": [
-            "IsDebuggerPresent", "CheckRemoteDebuggerPresent", "OutputDebugString",
-            "NtQueryInformationProcess"
-        ]
-    }
+class ImportAnalyser:
+    """Analyse PE imports for notable/suspicious APIs and categorize them."""
 
     def __init__(self, imports: dict):
-        self.imports = imports
+        self.imports = imports or {}
         self.categorized = {}
         self.suspicious = {}
+        self.apiCategories = apiCategories
+        self.notableApis = notableApis
 
-    def categorize_imports(self) -> dict[str, list[tuple[str, str]]]:
-        categorized = {cat: [] for cat in self.API_CATEGORIES.keys()}
-        categorized["uncategorized"] = []
+    def normalize(self, name: str) -> str:
+        if not name:
+            return ""
+        name = re.sub(r"@[\d]+$", "", name.strip())
+        if len(name) > 1 and name[-1] in ("A", "W") and name[-2].isalpha():
+            name = name[:-1]
+        return re.sub(r"[^A-Za-z0-9_]", "", name).upper()
+
+    def categorizeImports(self) -> dict:
+        self.categorized = {cat: [] for cat in self.apiCategories.keys()}
+        self.categorized["uncategorized"] = []
 
         for dll, funcs in self.imports.items():
             for func in funcs:
+                norm = self.normalize(func)
                 matched = False
-                for cat, api_list in self.API_CATEGORIES.items():
-                    if any(api.lower() in func.lower() for api in api_list):
-                        categorized[cat].append((dll, func))
+
+                for cat, apiSet in {k: {self.normalize(a) for a in v} for k, v in self.apiCategories.items()}.items():
+                    if norm in apiSet:
+                        self.categorized[cat].append((dll, func))
                         matched = True
                         break
                 if not matched:
-                    categorized["uncategorized"].append((dll, func))
-        self.categorized = categorized
-        return categorized
+                    self.categorized["uncategorized"].append((dll, func))
 
-    def getNotableApis(self) -> dict[str, list[str]]:
-        notableApis = [
-            "VirtualAllocEx", "WriteProcessMemory", "CreateRemoteThread",
-            "URLDownloadToFile", "InternetConnect", "HttpSendRequest",
-            "IsDebuggerPresent", "AdjustTokenPrivileges", "SetWindowsHookEx",
-            "GetAsyncKeyState"
-        ]
+        return self.categorized
 
-        flagged = {}
+    def getNotableApis(self) -> dict:
+        self.suspicious = {}
+        normalizedNotables = {self.normalize(n) for n in self.notableApis}
         for dll, funcs in self.imports.items():
-            hits = [f for f in funcs if any(s.lower() in f.lower() for s in notableApis)]
-            if hits:
-                flagged[dll] = hits
-        self.suspicious = flagged
-        return flagged
+            flagged = []
+            for func in funcs:
+                if self.normalize(func) in normalizedNotables:
+                    flagged.append(func)
+            if flagged:
+                self.suspicious[dll] = flagged
+        return self.suspicious
 
-    def summarize(self) -> dict[str, any]:
-        if not self.categorized:
-            self.categorize_imports()
-        if not self.suspicious:
-            self.getNotableApis()
+    def analyseImports(self) -> dict[str, dict[str, dict[str, str]]]:
+        """
+        Run analyses and return results
+        
+        Returns:
+            results (dict): set up by DLL and function:
+        """
+        self.categorizeImports()
+        self.getNotableApis()
 
-        summary = {cat: len(funcs) for cat, funcs in self.categorized.items() if funcs}
-        return {
-            "categorys": summary,
-            "suspicious": self.suspicious,
-            "total": sum(summary.values())
-        }
+        results: dict[str, dict[str, dict[str, str]]] = {}
+
+        for cat, funcs in self.categorized.items():
+            for dll, func in funcs:
+                severity = "high" if dll in self.suspicious and func in self.suspicious[dll] else "info"
+                resultDesc = "Notable API" if severity == "high" else "Normal API"
+
+                if dll not in results:
+                    results[dll] = {}
+
+                results[dll][func] = {
+                    "category": cat,
+                    "dll": dll,
+                    "function": func,
+                    "severity": severity,
+                    "result": resultDesc
+                }
+
+        return results

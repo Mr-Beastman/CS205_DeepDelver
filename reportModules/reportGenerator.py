@@ -1,53 +1,53 @@
+from reportlab.platypus import PageBreak, SimpleDocTemplate
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table
 from reportlab.lib.styles import getSampleStyleSheet
-import os
-from datetime import datetime
 
+from reportModules.summaryGenerator import SummaryReport
+from reportModules.staticGenerator import StaticReport
+from reportModules.dynamicGenerator import DynamicReport
+
+MAX_ROWS = 50
+
+# ----------------- Base Controller -----------------
 class ReportGenerator:
-    def __init__(self, filePath: str, staticResults: dict):
+    """
+    Controller to collect flowables from summary, static, and dynamic reports.
+    """
+    def __init__(self, filePath: str, staticResults: dict, dynamicResults: dict, riskReport: dict):
         self.filePath = filePath
         self.staticResults = staticResults
+        self.dynamicResults = dynamicResults
+        self.riskReport = riskReport
         self.styles = getSampleStyleSheet()
-        self.page = []
 
-    def formatHeader(self):
-        self.page.append(Paragraph("DeepDelver Malware Analysis Report", self.styles['Title']))
-        self.page.append(Spacer(1, 12))
+        # Initialize individual report sections
+        self.summarySection = SummaryReport(filePath, staticResults, riskReport)
+        self.staticSection = StaticReport(filePath, staticResults)
+        self.dynamicSection = DynamicReport(filePath, dynamicResults)
 
-    def formatSummary(self):
-        self.page.append(Paragraph("Summary", self.styles["Heading2"]))
-        self.page.append(Paragraph(f"<b>File Name:</b> {self.staticResults.get('Metadata', {}).get('fileName')}", self.styles['Normal']))
-        self.page.append(Paragraph(f"<b>Scan Date:</b> {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}", self.styles['Normal']))
-        self.page.append(Paragraph(f"<b>Rating:</b>"))
-        self.page.append(Spacer(1, 20))        
+    def buildReportSections(self):
+        """Return combined flowables from summary, static, and dynamic sections."""
+        flowables = []
 
-    def formatMetadata(self):
-        self.page.append(Paragraph("Metadata", self.styles["Heading2"]))
+        # Summary first
+        flowables.extend(self.summarySection.getFlowables())
 
-        metadata = self.staticResults.get("Metadata",{})
-        tableData = []
+        # # Static analysis
+        flowables.extend(self.staticSection.getFlowables())
 
-        for key, value in metadata.items():
-            if isinstance(value, list):
-                value = "\n".join(value)
-            tableData.append([key, str(value)])
+        # # Dynamic analysis
+        flowables.extend(self.dynamicSection.getFlowables())
 
-        table = Table(tableData, colWidths=[120, 350])
+        return flowables
 
-        self.page.append(table)  
+    def generatePDF(self, outputPath=None):
+        """Build PDF using all available sections."""
+        if outputPath is None:
+            import os
+            filename = os.path.basename(self.filePath)
+            outputPath = os.path.join(os.path.expanduser("~"), "Desktop", f"{filename}_report.pdf")
 
-    def generateReport(self, outputPath: str = None):
-            if outputPath is None:
-                filename = os.path.basename(self.filePath)
-                outputPath = f"{filename}_report.pdf"
-
-            doc = SimpleDocTemplate(outputPath, pagesize=letter)
-
-            self.formatHeader()
-            self.formatSummary()
-            self.formatMetadata()
-
-            # Build PDF
-            doc.build(self.page)
-            print(f"[+] PDF report generated: {os.path.abspath(outputPath)}")
+        flowables = self.buildReportSections()
+        doc = SimpleDocTemplate(outputPath, pagesize=letter)
+        doc.build(flowables)
+        print(f"[+] PDF report generated: {outputPath}")

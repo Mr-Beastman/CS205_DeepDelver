@@ -4,8 +4,7 @@ from functools import wraps
 
 def functionTimer(function):
     """
-    record the time a process takes, help monitor preformance
-    
+    record the time a process takes, helps monitor preformance
     """
     @wraps(function)
     def wrapper(*args, **kwargs):
@@ -17,7 +16,19 @@ def functionTimer(function):
     return wrapper
 
 
+def isExe(filepath: str) -> bool:
+    """
+    Return True only if the file is a real .exe (PE file).
+    """
+    if not filepath.lower().endswith(".exe"):
+        return False
 
+    try:
+        with open(filepath, "rb") as f:
+            header = f.read(2)
+            return header == b"MZ"
+    except Exception:
+        return False
 
 def loadCsv(filePath: str) -> list:
     """

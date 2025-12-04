@@ -1,7 +1,4 @@
 import hashlib
-import requests
-
-# --------- Get file hash data -------------- #
 
 class HashIdExtractor:
 
@@ -10,7 +7,6 @@ class HashIdExtractor:
         self.hashType = ["Md5","Sha1","sha256"]
         
     def getHashId(self, hashType:list = None) -> dict:
-        # docString
         """
         Calculate the hash of a file using the specified types.
 
@@ -35,8 +31,7 @@ class HashIdExtractor:
                     while chunk := file.read(8192):
                         hasher.update(chunk)
                 hashId[hash] = {
-                    "code":hasher.hexdigest(),
-                    "flag":"Not Checked"
+                    "code":hasher.hexdigest()
                 }
             except ValueError:
                 hashId[hash] = "Unsupported hash type"

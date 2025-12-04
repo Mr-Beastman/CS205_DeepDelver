@@ -1,227 +1,173 @@
 import re
-import os
 
 class StringExtractor:
+    """
+    Extracts ASCII and UTF-16 strings from a Windows binary file and attempts to find URLs, IPs, file paths, registry keys, commands, emails and Base64 elements
+    """
 
-    def __init__(self, filePath:str):
+    def __init__(self, filePath: str):
         self.filePath = filePath
         self.binaryData = None
         self.asciiStrings = []
         self.utf16Strings = []
         self.allStrings = []
 
-# ---- Loading File ----
-
+    # ---- Load File ----
     def loadFile(self):
-        #docString
         """
-        Ensure file is loaded in binary mode
+        Load the binary file into memory
         """
-
         if self.binaryData is None:
             with open(self.filePath, "rb") as file:
                 self.binaryData = file.read()  
 
-# ---- String Extraction ----
-
+    # ---- String Extraction ----
     def extractAscii(self, minLength: int = 4):
+        """
+        Extract ASCII strings from the binary
 
-
-        print("> Extracting ASCII strings")
-    
+        Parameter: 
+            int : min length of strings to extract
+        """
         asciiPattern = re.compile(rb"[ -~]{%d,}" % minLength)
-
-        patternMatches = asciiPattern.findall(self.binaryData)
-
-        for match in patternMatches:
-            decodedString = match.decode(errors="ignore")
-            self.asciiStrings.append(decodedString)
+        self.asciiStrings = [match.decode(errors="ignore") for match in asciiPattern.findall(self.binaryData)]
 
     def extractUtf16(self, minLength: int = 4):
-
-        print("> Extracting utf16 strings")
-        
-        utf16Pattern = re.compile((rb"(?:[ -~]\x00){" + str(minLength).encode() + rb",}"))
-        patternMatches = utf16Pattern.findall(self.binaryData)
-        
-        for mactch in patternMatches:
-            try:
-                decodedString = mactch.decode("utf-16le", errors="ignore")
-                self.utf16Strings.append(decodedString)
-            except Exception:
-                continue
-
-
-    def extractStrings(self):
-        #docString
         """
-        extract ASCII and Utf16 strings from the binary file and store in single list
+        Extract UTF-16 encoded strings from the binary
 
-        Parameters/Returns :
-            None
+        Parameter: 
+            int : min length of strings to extract
         """
-        self.extractAscii()
-        self.extractAscii()
+        utf16Pattern = re.compile(rb"(?:[ -~]\x00){" + str(minLength).encode() + rb",}")
+        matches = utf16Pattern.findall(self.binaryData)
+        self.utf16Strings = [m.decode("utf-16le", errors="ignore") for m in matches]
 
-        self.allStrings = self.asciiStrings + self.utf16Strings
-
-
-
-            
-# ---- Pattern extactors ----
 
     def extractUrls(self) -> list:
-        #docString
         """
-        extract urls from the files ASCII strings
+        Extract URLs from all strings.
 
-        Returns:
-            list: of strings that match url patterns
+        Return: 
+            list: unique URLs
         """
-
         urls = []
         urlPattern = re.compile(r"https?://[^\s\"'<>]+")
-
-        print("> Checking Strings for Urls")
-
         for string in self.allStrings:
-            found = urlPattern.findall(string)
-            urls.extend(found)
-        
-        return urls
-    
+            for u in urlPattern.findall(string):
+                if len(u) > 8 and not any(c in u for c in ' {}|^`\\'):
+                    urls.append(u)
+        return list(dict.fromkeys(urls))
+
     def extractIPs(self) -> list:
         """
-        extract ips from the files ASCII strings
+        Extract IPv4 addresses from strings
 
-        Returns:
-            list: of strings that match ip patterns
+        Return: 
+            list :  unique IPs
         """
-
         ips = []
         ipPattern = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-
-        print("> Checking Strings for IPs")
-
         for string in self.allStrings:
-            found = ipPattern.findall(string)
-            for ip in found:
-                ips.append(ip)
-
-        return ips
+            for ip in ipPattern.findall(string):
+                if ip not in ["0.0.0.0", "127.0.0.1"]:
+                    ips.append(ip)
+        return list(dict.fromkeys(ips))
 
     def extractFilePaths(self) -> list:
         """
-        extract file paths from the files ASCII strings
+        Extract Windows file paths, focusing on executables, DLLs, scripts, and temp files.
 
-        Returns:
-            list: of strings that match file path patterns
+        Return: 
+            list : unique file paths
         """
-
         paths = []
-        pathPattern = re.compile(r"[A-Za-z]:\\(?:[^\x00-\x1f\\:*?\"<>|]+\\)*[^\x00-\x1f\\:*?\"<>|]*")
-
-        print("> Checking Strings for File Paths")
-
+        pathPattern = re.compile(
+            r"[A-Za-z]:\\(?:[^\x00-\x1f\\:*?\"<>|]+\\)+(?:\w+\.(?:exe|dll|tmp|bat|vbs))?"
+        )
         for string in self.allStrings:
-            if pathPattern.search(string):
-                paths.append(string)
+            match = pathPattern.search(string)
+            if match:
+                candidate = match.group()
+                if len(candidate) > 3 and not re.search(r"[:$<>\|]{2,}", candidate):
+                    paths.append(candidate)
+        return list(dict.fromkeys(paths))
 
-        
-        return paths
-    
     def extractRegistryKeys(self) -> list:
-        #docString
         """
-        """
+        Extract Windows registry keys from strings
 
+        Return: 
+            list : unique registry keys
+        """
         keys = []
-        keyPattern = re.compile(r"H[KL]CU\\[A-Za-z0-9\\]+")
-
-        print("> Checking Strings for Registry Keys")
-        
+        keyPattern = re.compile(r"H[KL]CU\\(?:Software\\|System\\|Wow6432Node\\)[A-Za-z0-9\\]+")
         for string in self.allStrings:
-            if keyPattern.search(string):
-                keys.append(string)
-
-        return keys
-    
+            match = keyPattern.search(string)
+            if match:
+                keys.append(match.group())
+        return list(dict.fromkeys(keys))
 
     def extractCommands(self) -> list:
-        #docString
         """
-        """
+        Extract execution commands such as cmd.exe, powershell, wscript, rundll32
 
+        Return:
+            lsit : unique commands
+        """
         commands = []
         commandPattern = re.compile(r"(cmd\.exe|powershell|wscript|rundll32)\b", re.IGNORECASE)
-
-        print("> Checking Strings for Commands")
-        
         for string in self.allStrings:
-            found = commandPattern.findall(string)
-            for command in found:
-                commands.append(command)
-
-        return commands
+            commands.extend(commandPattern.findall(string))
+        return list(dict.fromkeys(commands))
 
     def extractEmails(self) -> list:
-        #docString
         """
-        Extract email addresses
+        Extract email addresses from all strings.
+
+        Return: 
+            list : unique emails
         """
-        
         emails = []
         emailPattern = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
-
-        print("> Checking Strings for Email Addresses")
-        
         for string in self.allStrings:
-            found = emailPattern.findall(string)
-            for email in found:
-                emails.append(email)
+            emails.extend(emailPattern.findall(string))
+        return list(dict.fromkeys(emails))
 
-        return emails
-    
     def extractBase64(self) -> list:
-        #docString
         """
-        Extract long base64-like strings
+        Extract Base64 encoded strings
+
+        REturn: 
+            list : unique Base64
         """
         b64strings = []
         b64Pattern = re.compile(r"[A-Za-z0-9+/]{20,}={0,2}")
-
-        print("> Checking Strings for Base64")
-
         for string in self.allStrings:
-            found = b64Pattern.findall(string)
-            for b64 in found:
-                b64strings.append(b64)
+            b64strings.extend(b64Pattern.findall(string))
+        return list(dict.fromkeys(b64strings))
 
-        return b64strings
-
-# ---- controller ----
-
-    def extractAll(self) -> dict:
-        #docString
+    # ---- Full Extraction ----
+    def extractAll(self, minAscii: int = 4, minUtf16: int = 4) -> dict:
         """
-        Run all string based extractions and return via disctionary
+        Extract all string types and patterns from the binary.
 
-        Parameters: 
-            None
-        Returns:
-            dict : containing type and results.
+        Parameter: 
+            int : min length for ASCII strings.
+            int : min length for UTF-16 strings.
+        Return: 
+            dict: urls, ips, filePaths, registryKeys, commands, emails, base64.
         """
-
         self.loadFile()
-
-        self.extractStrings()
-
+        self.extractAscii(minAscii)
+        self.extractUtf16(minUtf16)
+        self.allStrings = self.asciiStrings + self.utf16Strings
 
         return {
             "urls": self.extractUrls(),
             "ips": self.extractIPs(),
-            "file_paths": self.extractFilePaths(),
-            "registry_keys": self.extractRegistryKeys(),
+            "filePaths": self.extractFilePaths(),
+            "registryKeys": self.extractRegistryKeys(),
             "commands": self.extractCommands(),
             "emails": self.extractEmails(),
             "base64": self.extractBase64()
